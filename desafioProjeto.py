@@ -154,9 +154,7 @@ class Historico:
                 transacoes.append(transacao)
             return transacoes       
         
-    
-    
-class Transacao(ABC):
+    class Transacao(ABC):
     @property
     @abstractproperty
     def valor(self):
