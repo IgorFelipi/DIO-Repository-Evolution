@@ -10,7 +10,7 @@ class Cliente:
         self.indice_conta = 0
 
     def realizar_transacao(self, conta, transacao):
-        if len(conta.historico.transacoes_do_dia())>= 10: 
+        if len(conta.historico.transacoes_do_dia()) >= 10: 
             print("\n@@@ Você excedeu o numero de transações permitidas para hoje! @@@")
             return
         
@@ -134,7 +134,7 @@ class Historico:
             {
                 "tipo": transacao.__class__.__name__,
                 "valor": transacao.valor,
-                "data": datetime.now().strftime("%d-%m-%Y %H:%M:%s"),
+                "data": datetime.utcnow().strftime("%d-%m-%Y %H:%M:%S"),
             }
         )
     
@@ -152,9 +152,10 @@ class Historico:
             data_transacao = datetime.strptime(transacao["data"], "%d-%m-%Y %H:%M:%S").date()
             if data_atual == data_transacao:
                 transacoes.append(transacao)
-            return transacoes       
+        return transacoes       
         
-    class Transacao(ABC):
+
+class Transacao(ABC):
     @property
     @abstractproperty
     def valor(self):
@@ -223,6 +224,22 @@ def recuperar_conta_cliente(cliente):
     return cliente.contas[0]
 
 
+def log_transacao(func):
+    def checar_transacao(clientes, *args, **kwargs):
+        actions = {
+            "depositar": lambda: print(f"Fazendo depósito em {datetime.utcnow().date()}"),
+            "sacar": lambda: print(f"Sacando dia: {datetime.utcnow().date()}"),
+            "criar_conta": lambda: print(f"Criando conta em: {datetime.utcnow().date()}")
+        }
+        action = actions.get(func.__name__)
+        if action:
+            action()
+        
+        return func(clientes, *args, **kwargs)
+    return checar_transacao
+
+
+@log_transacao
 def depositar(clientes):
     cpf = input("Informe o CPF do cliente: ")
     cliente = filtrar_cliente(cpf, clientes)
@@ -241,6 +258,7 @@ def depositar(clientes):
     cliente.realizar_transacao(conta, transacao)
 
 
+@log_transacao
 def sacar(clientes):
     cpf = input("Informe o CPF do cliente: ")
     cliente = filtrar_cliente(cpf, clientes)
@@ -259,6 +277,21 @@ def sacar(clientes):
     cliente.realizar_transacao(conta, transacao)
 
 
+@log_transacao
+def criar_conta(numero_conta, clientes, contas):
+    cpf = input("Informe o CPF do cliente: ")
+    cliente = filtrar_cliente(cpf, clientes)
+
+    if not cliente:
+        print("\n@@@ Cliente não encontrado, fluxo de criação de conta encerrado! @@@")
+        return
+
+    conta = ContaCorrente.nova_conta(cliente=cliente, numero=numero_conta)
+    contas.append(conta)
+    cliente.contas.append(conta)
+
+    print("\n=== Conta criada com sucesso! ===")
+
 
 def exibir_extrato(clientes):
     cpf = input("Informe o CPF do cliente: ")
@@ -273,8 +306,6 @@ def exibir_extrato(clientes):
         return
 
     print("\n================ EXTRATO ================")
-    transacoes = conta.historico.transacoes
-
     extrato = ""
     tem_transacao = False
     for transacao in conta.historico.gerar_relatorio():
@@ -306,21 +337,6 @@ def criar_cliente(clientes):
     clientes.append(cliente)
 
     print("\n=== Cliente criado com sucesso! ===")
-
-
-def criar_conta(numero_conta, clientes, contas):
-    cpf = input("Informe o CPF do cliente: ")
-    cliente = filtrar_cliente(cpf, clientes)
-
-    if not cliente:
-        print("\n@@@ Cliente não encontrado, fluxo de criação de conta encerrado! @@@")
-        return
-
-    conta = ContaCorrente.nova_conta(cliente=cliente, numero=numero_conta)
-    contas.append(conta)
-    cliente.contas.append(conta)
-
-    print("\n=== Conta criada com sucesso! ===")
 
 
 def listar_contas(contas):
