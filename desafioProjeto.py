@@ -3,6 +3,29 @@ from abc import ABC, abstractclassmethod, abstractproperty
 from datetime import datetime
 
 
+class conta_iterador:
+    def __init__(self, contas):
+        self.contas = contas
+        self._index = 0
+    
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        try:
+            conta = self.contas[self._index]
+            return f"""\
+                Agência: \t{conta.agencia}
+                Numero: \t{conta.numero}
+                Titular: \t{conta.cliente.nome}
+                Saldo: \t\tR$ {conta.saldo:.2f}
+            """
+        except IndexError:
+            raise StopIteration
+        finally:
+            self._index += 1
+
+
 class Cliente:
     def __init__(self, endereco):
         self.endereco = endereco
@@ -225,17 +248,10 @@ def recuperar_conta_cliente(cliente):
 
 
 def log_transacao(func):
-    def checar_transacao(clientes, *args, **kwargs):
-        actions = {
-            "depositar": lambda: print(f"Fazendo depósito em {datetime.utcnow().date()}"),
-            "sacar": lambda: print(f"Sacando dia: {datetime.utcnow().date()}"),
-            "criar_conta": lambda: print(f"Criando conta em: {datetime.utcnow().date()}")
-        }
-        action = actions.get(func.__name__)
-        if action:
-            action()
-        
-        return func(clientes, *args, **kwargs)
+    def checar_transacao(*args, **kwargs):
+        resultado = func(*args,**kwargs)
+        print(f"{datetime.now()}: {func.__name__.upper()}")
+        return resultado
     return checar_transacao
 
 
@@ -292,8 +308,8 @@ def criar_conta(numero_conta, clientes, contas):
 
     print("\n=== Conta criada com sucesso! ===")
 
-
-def exibir_extrato(clientes):
+@log_transacao
+def exibir_extrato(clientes):   
     cpf = input("Informe o CPF do cliente: ")
     cliente = filtrar_cliente(cpf, clientes)
 
@@ -319,7 +335,7 @@ def exibir_extrato(clientes):
     print(f"\nSaldo:\n\tR$ {conta.saldo:.2f}")
     print("==========================================")
 
-
+@log_transacao
 def criar_cliente(clientes):
     cpf = input("Informe o CPF (somente número): ")
     cliente = filtrar_cliente(cpf, clientes)
@@ -340,7 +356,7 @@ def criar_cliente(clientes):
 
 
 def listar_contas(contas):
-    for conta in contas:
+    for conta in conta_iterador(contas):
         print("=" * 100)
         print(textwrap.dedent(str(conta)))
 
